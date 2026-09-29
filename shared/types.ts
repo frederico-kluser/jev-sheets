@@ -3,10 +3,14 @@
 /** Valor de célula tratado como texto (a planilha PoC é textual). */
 export type CellValue = string;
 
-/** Linha da planilha. `id` é estável e serve de chave de UI; o resto são colunas. */
+/**
+ * Linha da planilha. `id` é estável e serve de chave de UI; o resto são colunas.
+ * `__ai_meta` carrega o resultado Jev da linha para a célula da coluna temporária.
+ */
 export interface SheetRow {
   id: string;
-  [key: string]: CellValue;
+  __ai_meta?: RowAnalysis;
+  [key: string]: CellValue | RowAnalysis | undefined;
 }
 
 /** Metadado de coluna: `key` identifica o campo, `name` é o nome visível (avaliado pela IA). */

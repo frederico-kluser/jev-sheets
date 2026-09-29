@@ -28,19 +28,22 @@ concorrência máxima e um clique só para enviar.
 ```bash
 npm install
 cp .env.example .env        # já vem OPENROUTER_API_KEY neste PoC (ver .env)
-npm run build               # bundle de produção (dist/)
 
-npm run dev:api             # terminal 1: API em http://127.0.0.1:8787
-npm run dev                 # terminal 2: UI em http://127.0.0.1:5173 (proxy /api)
+npm run dev                 # sobe UI + API juntos (um comando só)
+                            # UI no URL impresso (5173, ou outra se ocupada),
+                            # API em http://127.0.0.1:8787, proxy /api automático
 
-# ou tudo em produção (UI + API no mesmo processo):
-npm start                   # http://127.0.0.1:8787
+npm run build && npm start  # produção: UI + API no mesmo processo (porta 8787)
 ```
+
+Se a porta 5173 estiver ocupada por outro projeto, o orquestrador avisa e
+imprime o URL real da UI (ex.: `http://localhost:5174/`) — abra sempre o URL
+impresso. Alternativas manuais: `npm run dev:api` + `npm run dev:web`.
 
 ## Testes (a prova de que funciona)
 
 ```bash
-npm test          # 52 testes: unitários + UI (offline, determinísticos)
+npm test          # 54 testes: unitários + UI (offline, determinísticos)
 npm run test:live # 4 testes AO VIVO contra o Jev real (usa a chave do .env)
 npm run test:e2e  # 2 testes Playwright: fluxo completo em browser real
 ```
@@ -50,9 +53,9 @@ npm run test:e2e  # 2 testes Playwright: fluxo completo em browser real
 | Suíte | Testes | Resultado | Destaques medidos |
 |---|---|---|---|
 | `tests/unit` (cache, chave, pool, requisições, pipeline) | 42 | 42 verdes | pico de concorrência = teto; dedup; cache incremental |
-| `tests/ui` (Testing Library + AG Grid em jsdom) | 6 | 6 verdes | coluna preenche/limpa; estados de erro; botões |
+| `tests/ui` (Testing Library + AG Grid em jsdom) | 8 | 8 verdes | coluna preenche/limpa/desfaz; cancelar; offline 502; erros |
 | `tests/integration` (Jev real, OpenRouter) | 4 | 4 verdes | 6 decisões reais em 689 ms; 2ª execução = 0 chamadas |
-| `e2e` (Playwright + Jev real) | 2 | 2 verdes | fluxo completo 4,0 s; edição limpa o veredito |
+| `e2e` (Playwright + Jev real) | 2 | 2 verdes | fluxo completo 2,7 s; edição limpa o veredito |
 
 Prova ao vivo via API (`curl /api/analyze`, 3 linhas com 1 repetida):
 
@@ -169,9 +172,12 @@ JEV_CACHE_PATH=data/jev-cache.json   # opcional
 ## Auditoria UX/UI
 
 `docs/ux-audit.json` — avaliação da interface pela framework uxuiprinciples
-(195 princípios): nota 73/100 (banda `good`), 5 findings priorizados (transparência
-da IA em tooltip, distinção visual de bandas hitl, desfazer em "Limpar coluna") e
-4 pontos fortes. Sem `UXUI_API_KEY` configurada (`api_enriched: false`).
+(195 princípios), reavaliada após correções: **94/100 (banda `excellent`)**.
+Os 5 findings da primeira auditoria (transparência da IA só em tooltip, bandas
+hitl indistinguíveis, limpeza sem desfazer, estatísticas densas, falta de
+cancelamento) foram corrigidos; restam 2 sugestões (terceiro estado "REVER"
+para p≈0.5 e botão "Repetir erros"). Sem `UXUI_API_KEY` configurada
+(`api_enriched: false`).
 
 ## Aprendizados da construção
 

@@ -9,12 +9,15 @@ const encoder = new TextEncoder();
 
 function ndjsonResponse(events: StreamEvent[]): Response {
   const body = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
-  return new Response(new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(body));
-      controller.close();
-    },
-  }), { status: 200 });
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(body));
+        controller.close();
+      },
+    }),
+    { status: 200 },
+  );
 }
 
 const statsFixture: AnalyzeStats = {
@@ -83,7 +86,7 @@ describe("App · filtro de IA na planilha", () => {
     expect(screen.getByText("0 SIM, 0 NÃO na coluna temporária")).toBeInTheDocument();
   });
 
-  it("Enviar análise enche a coluna com SIM/NÃO e mostra estatísticas", async () => {
+  it("Enviar análise enche a coluna com SIM/NÃO e mostra estatísticas em chips", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText("Padaria Aurora");
@@ -94,13 +97,18 @@ describe("App · filtro de IA na planilha", () => {
     const grid = document.querySelector(".grid-shell")!;
     expect(within(grid as HTMLElement).getByText("SIM")).toBeInTheDocument();
     expect(within(grid as HTMLElement).getByText("NÃO")).toBeInTheDocument();
-    // estatísticas do envio (conc. real, custo, cache)
-    expect(await screen.findByText(/18 linhas, 0 da cache, 18 analisadas/)).toBeInTheDocument();
-    expect(screen.getByText(/US\$ 0\.00021/)).toBeInTheDocument();
-    expect(screen.getByText(/pico de 12 em paralelo \(teto 32\)/)).toBeInTheDocument();
+    // detalhe da decisão sempre visível (não só em hover)
+    expect(within(grid as HTMLElement).getByText(/p 0\.910 · auto/)).toBeInTheDocument();
+    expect(within(grid as HTMLElement).getByText(/p 0\.180 · hitl · cache/)).toBeInTheDocument();
+    // estatísticas do envio
+    expect(screen.getByText("18 linhas", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("0 da cache", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("18 analisadas", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("US$ 0.00021", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("pico de 12 em paralelo (teto 32)", { exact: true })).toBeInTheDocument();
   });
 
-  it("Limpar coluna volta a deixar a coluna limpa", async () => {
+  it("Limpar coluna volta a deixar a coluna limpa e permite desfazer", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText("Padaria Aurora");
@@ -112,10 +120,14 @@ describe("App · filtro de IA na planilha", () => {
     expect(screen.getByText("0 SIM, 0 NÃO na coluna temporária")).toBeInTheDocument();
     const grid = document.querySelector(".grid-shell")!;
     expect(within(grid as HTMLElement).queryByText("SIM")).not.toBeInTheDocument();
-    expect(within(grid as HTMLElement).queryByText("NÃO")).not.toBeInTheDocument();
+
+    // toast de desfazer restaura os vereditos
+    expect(screen.getByText("Coluna temporária limpa.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Desfazer" }));
+    expect(screen.getByText("1 SIM, 1 NÃO na coluna temporária")).toBeInTheDocument();
   });
 
-  it("desativa o botão Enviar com prompt vazio ou durante a análise", async () => {
+  it("desativa o botão Enviar com prompt vazio; durante a análise oferece Parar", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText("Padaria Aurora");
@@ -126,6 +138,62 @@ describe("App · filtro de IA na planilha", () => {
 
     await user.type(promptBox, "Há risco de churn?");
     expect(screen.getByRole("button", { name: "Enviar análise" })).toBeEnabled();
+  });
+
+  it("Parar cancela a análise e avisa que os parciais foram mantidos", async () => {
+    // fetch que nunca responde até ser abortado (simula execução longa)
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          const url = String(input);
+          if (url.includes("/api/health")) {
+            _resolve(
+              new Response(
+                JSON.stringify({
+                  ok: true,
+                  model: "typesafe/jev-1.13",
+                  keyConfigured: true,
+                  cacheEntries: 0,
+                  concurrencyDefault: 32,
+                }),
+                { status: 200 },
+              ),
+            );
+            return;
+          }
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("The operation was aborted.", "AbortError")),
+          );
+        }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Padaria Aurora");
+    await user.click(screen.getByRole("button", { name: "Enviar análise" }));
+
+    const stopButton = await screen.findByRole("button", { name: "Parar" });
+    await user.click(stopButton);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/Análise interrompida/);
+    expect(screen.getByRole("button", { name: "Enviar análise" })).toBeEnabled();
+  });
+
+  it("mostra estado offline e banner amigável quando a API está em baixo (502)", async () => {
+    fetchMock.mockImplementation(async () => new Response("Bad Gateway", { status: 502 }));
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Padaria Aurora");
+
+    await waitFor(() => {
+      expect(screen.getByText("offline")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Enviar análise" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/não está a responder/);
+    expect(alert).toHaveTextContent(/npm run dev/);
   });
 
   it("mostra banner de erro quando o servidor falha no stream", async () => {
@@ -154,12 +222,13 @@ describe("App · filtro de IA na planilha", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Sem créditos|HTTP 500/);
   });
 
-  it("exibe a saúde do servidor (modelo, chave, cache, concorrência)", async () => {
+  it("exibe a saúde do servidor (modelo, chave, API, cache, concorrência)", async () => {
     render(<App />);
     await waitFor(() => {
       expect(screen.getByText("typesafe/jev-1.13")).toBeInTheDocument();
     });
     expect(screen.getByText("configurada")).toBeInTheDocument();
+    expect(screen.getByText("ligada")).toBeInTheDocument();
     expect(screen.getByText("7 entradas")).toBeInTheDocument();
     expect(screen.getByText("32 máx.")).toBeInTheDocument();
   });

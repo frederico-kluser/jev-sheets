@@ -1,32 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AiFilterBar } from "./components/AiFilterBar";
+import { AiFilterBar, type Banner } from "./components/AiFilterBar";
 import { SheetGrid } from "./components/SheetGrid";
 import { analyzeStream, clearServerCache, fetchHealth } from "./lib/api";
 import { SAMPLE_COLUMNS, SAMPLE_ROWS, dataColumns } from "../shared/sample-data";
 import { TEMP_COLUMN_ID } from "../shared/types";
 import type { AnalyzeStats, HealthResponse, RowAnalysis, SheetRow } from "../shared/types";
 
-const initialRows = (): SheetRow[] => SAMPLE_ROWS.map((r) => ({ ...r, [TEMP_COLUMN_ID]: "" }));
+const initialRows = (): SheetRow[] =>
+  SAMPLE_ROWS.map((r) => ({ ...r, [TEMP_COLUMN_ID]: "", __ai_meta: undefined }));
+
+interface UndoSnapshot {
+  rows: SheetRow[];
+  results: Map<string, RowAnalysis>;
+}
 
 export default function App() {
   const [rows, setRows] = useState<SheetRow[]>(initialRows);
   const [results, setResults] = useState<Map<string, RowAnalysis>>(new Map());
-  const [prompt, setPrompt] = useState("A empresa demonstra risco de churn (insatisfação, cancelamento ou queda de uso)?");
+  const [prompt, setPrompt] = useState(
+    "A empresa demonstra risco de churn (insatisfação, cancelamento ou queda de uso)?",
+  );
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [stats, setStats] = useState<AnalyzeStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<Banner | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [healthOffline, setHealthOffline] = useState(false);
+  const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
+  const [cacheConfirm, setCacheConfirm] = useState(false);
   const rowsRef = useRef(rows);
+  const abortRef = useRef<AbortController | null>(null);
   rowsRef.current = rows;
 
   const refreshHealth = useCallback(() => {
     fetchHealth()
-      .then(setHealth)
-      .catch(() => setHealth(null));
+      .then((h) => {
+        setHealth(h);
+        setHealthOffline(false);
+      })
+      .catch(() => {
+        setHealth(null);
+        setHealthOffline(true);
+      });
   }, []);
 
   useEffect(refreshHealth, [refreshHealth]);
+
+  // O toast de desfazer desaparece sozinho passados 6 s.
+  useEffect(() => {
+    if (!undoSnapshot) return;
+    const timer = setTimeout(() => setUndoSnapshot(null), 6000);
+    return () => clearTimeout(timer);
+  }, [undoSnapshot]);
 
   const verdictCount = useMemo(() => {
     let sim = 0;
@@ -45,23 +70,29 @@ export default function App() {
       return next;
     });
     setRows((prev) =>
-      prev.map((r) => (r.id === result.rowId ? { ...r, [TEMP_COLUMN_ID]: result.verdict } : r)),
+      prev.map((r) =>
+        r.id === result.rowId
+          ? { ...r, [TEMP_COLUMN_ID]: result.verdict, __ai_meta: result }
+          : r,
+      ),
     );
   }, []);
 
   const runAnalysis = useCallback(async () => {
     setRunning(true);
-    setError(null);
+    setBanner(null);
     setStats(null);
+    setUndoSnapshot(null);
     setResults(new Map());
     setRows(initialRows());
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       await analyzeStream(
         {
           prompt,
           columns: dataColumns(),
           rows: rowsRef.current.map((r) => ({ ...r })),
-          concurrency: undefined,
         },
         (event) => {
           if (event.type === "start") {
@@ -72,27 +103,57 @@ export default function App() {
           } else if (event.type === "done") {
             setStats(event.stats);
           } else if (event.type === "error") {
-            setError(event.message);
+            setBanner({ kind: "error", message: event.message });
           }
         },
+        controller.signal,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setBanner({
+          kind: "info",
+          message: "Análise interrompida. Os resultados parciais foram mantidos na coluna.",
+        });
+      } else {
+        setBanner({ kind: "error", message: err instanceof Error ? err.message : String(err) });
+      }
     } finally {
       setRunning(false);
       setProgress(null);
+      abortRef.current = null;
       refreshHealth();
     }
   }, [prompt, applyResult, refreshHealth]);
 
+  const cancelAnalysis = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const clearColumn = useCallback(() => {
+    setUndoSnapshot({ rows, results: new Map(results) });
     setResults(new Map());
-    setRows((prev) => prev.map((r) => ({ ...r, [TEMP_COLUMN_ID]: "" })));
+    setRows((prev) =>
+      prev.map((r) => ({ ...r, [TEMP_COLUMN_ID]: "", __ai_meta: undefined })),
+    );
+  }, [rows, results]);
+
+  const undoClear = useCallback(() => {
+    setUndoSnapshot((snap) => {
+      if (snap) {
+        setRows(snap.rows);
+        setResults(snap.results);
+      }
+      return null;
+    });
   }, []);
 
   const onCellEdit = useCallback((rowId: string, key: string, value: string) => {
     setRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, [key]: value, [TEMP_COLUMN_ID]: "" } : r)),
+      prev.map((r) =>
+        r.id === rowId
+          ? { ...r, [key]: value, [TEMP_COLUMN_ID]: "", __ai_meta: undefined }
+          : r,
+      ),
     );
     setResults((prev) => {
       const next = new Map(prev);
@@ -100,6 +161,16 @@ export default function App() {
       return next;
     });
   }, []);
+
+  const onClearServerCache = useCallback(() => {
+    if (!cacheConfirm) {
+      setCacheConfirm(true);
+      setTimeout(() => setCacheConfirm(false), 4000);
+      return;
+    }
+    setCacheConfirm(false);
+    void clearServerCache().then(refreshHealth);
+  }, [cacheConfirm, refreshHealth]);
 
   return (
     <div className="app">
@@ -123,6 +194,12 @@ export default function App() {
             </dd>
           </div>
           <div>
+            <dt>API</dt>
+            <dd className={healthOffline ? "chip-bad" : "chip-ok"}>
+              {healthOffline ? "offline" : health ? "ligada" : "..."}
+            </dd>
+          </div>
+          <div>
             <dt>Cache</dt>
             <dd>{health ? `${health.cacheEntries} entradas` : "..."}</dd>
           </div>
@@ -137,11 +214,12 @@ export default function App() {
         prompt={prompt}
         onPromptChange={setPrompt}
         onRun={runAnalysis}
+        onCancel={cancelAnalysis}
         onClear={clearColumn}
         running={running}
         progress={progress}
         stats={stats}
-        error={error}
+        banner={banner}
       />
 
       <section className="grid-section" aria-label="Planilha">
@@ -152,12 +230,12 @@ export default function App() {
           <div className="grid-toolbar-actions">
             <button
               type="button"
-              className="btn btn-ghost"
-              onClick={() => {
-                void clearServerCache().then(refreshHealth);
-              }}
+              className={cacheConfirm ? "btn btn-danger-soft" : "btn btn-ghost"}
+              onClick={onClearServerCache}
             >
-              Limpar cache do servidor
+              {cacheConfirm
+                ? `Confirmar limpeza (${health?.cacheEntries ?? 0} entradas)?`
+                : "Limpar cache do servidor"}
             </button>
           </div>
         </div>
@@ -168,6 +246,15 @@ export default function App() {
           onCellEdit={onCellEdit}
         />
       </section>
+
+      {undoSnapshot ? (
+        <div className="undo-toast" role="status">
+          <span>Coluna temporária limpa.</span>
+          <button type="button" className="btn btn-ghost" onClick={undoClear}>
+            Desfazer
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Planilha completa (AG Grid) com filtro de IA: cada linha é avaliada pelo modelo Jev (System One, via OpenRouter) contra uma afirmação/pergunta, marcada SIM/NÃO em coluna temporária, com cache incremental e concorrência máxima.",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite",
     "dev:api": "tsx watch server/index.ts",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",

@@ -40,3 +40,19 @@ Correções e surpresas reais encontradas ao construir o PoC, para não os repet
 11. Sem `UXUI_API_KEY` o modo interno do framework funciona, mas os códigos de
     princípios menos comuns (ex.: automation bias) ficam por estimativa — marcar
     isso no `api_note` em vez de fingir verificação.
+
+## Dev mode (ronda de correções 2026-09-29)
+
+12. **`npm run dev` só com Vite = 502 no proxy.** O proxy `/api` do Vite devolve
+    502 quando não há API atrás — o sintoma parece erro de rede, não "servidor
+    desligado". Corrigido com um orquestrador (`scripts/dev.mjs`) que sobe API +
+    UI juntos e espera o `/api/health` antes de lançar o Vite.
+13. **O Vite troca de porta silenciosamente** ("Port 5173 is in use, trying
+    another one...") e o utilizador abre `localhost:5173` contra a app de OUTRO
+    projeto. O orquestrador agora captura o `Local:` do Vite, imprime o URL real
+    e avisa do conflito de porta.
+14. Erros HTTP crus (`502 (Bad Gateway)`) no console não são UX de erro: mapear
+    502/503/504 e falhas de rede para uma mensagem acionável ("corra `npm run
+    dev`, que sobe UI + API").
+15. `pkill -f "padrão"` dentro de um `bash -c` mata o próprio shell se o padrão
+    aparecer na linha de comando — usar job control ou PIDs guardados.

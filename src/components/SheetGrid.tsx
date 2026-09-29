@@ -3,13 +3,14 @@ import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-communi
 import { AgGridReact } from "ag-grid-react";
 import type { ColumnMeta, RowAnalysis, SheetRow } from "../../shared/types";
 import { TEMP_COLUMN_ID, TEMP_COLUMN_NAME } from "../../shared/types";
+import { VerdictCell } from "./VerdictCell";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface SheetGridProps {
   columns: ColumnMeta[];
   rows: SheetRow[];
-  /** Resultados do último envio, por rowId (para tooltip com probabilidade/banda). */
+  /** Resultados do último envio, por rowId (usado em classes e tooltips). */
   results: Map<string, RowAnalysis>;
   onCellEdit: (rowId: string, key: string, value: string) => void;
 }
@@ -23,7 +24,7 @@ interface SheetGridProps {
  */
 export function SheetGrid({ columns, rows, results, onCellEdit }: SheetGridProps) {
   const columnDefs = useMemo<ColDef[]>(() => {
-    const dataCols: ColDef[] = columns.map((c) => ({
+    const dataCols: ColDef[] = columns.map((c, index) => ({
       field: c.key,
       headerName: c.name,
       editable: true,
@@ -32,6 +33,8 @@ export function SheetGrid({ columns, rows, results, onCellEdit }: SheetGridProps
       resizable: true,
       minWidth: 110,
       enableCellChangeFlash: true,
+      // A coluna de identificação fica fixada: sem perder a linha em scroll horizontal.
+      ...(index === 0 ? { pinned: "left" as const } : {}),
     }));
     const aiCol: ColDef = {
       colId: TEMP_COLUMN_ID,
@@ -41,12 +44,17 @@ export function SheetGrid({ columns, rows, results, onCellEdit }: SheetGridProps
       sortable: true,
       filter: true,
       resizable: true,
-      minWidth: 160,
+      minWidth: 190,
+      // Fixada à direita: os vereditos ficam sempre visíveis durante o scroll.
+      pinned: "right",
+      cellRenderer: VerdictCell,
       cellClassRules: {
         "ai-verdict ai-sim": (p) => p.value === "SIM",
         "ai-verdict ai-nao": (p) => p.value === "NÃO",
         "ai-verdict ai-erro": (p) => p.value === "ERRO",
         "ai-source-cache": (p) => results.get(String(p.data?.id))?.source === "cache",
+        // Incerteza do Jev visível: banda hitl ganha contorno tracejado.
+        "ai-band-hitl": (p) => results.get(String(p.data?.id))?.band === "hitl",
       },
       tooltipValueGetter: (p) => {
         const r = results.get(String(p.data?.id));
