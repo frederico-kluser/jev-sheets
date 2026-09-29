@@ -1,0 +1,281 @@
+/* jev-sheets · tema claro único (Page Theme Lock), neutro + acento teal.
+   Estados semânticos (SIM/NÃO/ERRO) são as únicas cores saturadas. */
+
+:root {
+  --bg: #f7f7f6;
+  --surface: #ffffff;
+  --ink: #1c1f1d;
+  --ink-soft: #575e5a;
+  --line: #e2e4e1;
+  --accent: #0d7a6b;
+  --accent-ink: #ffffff;
+  --sim-bg: #e3f4ea;
+  --sim-ink: #17623f;
+  --nao-bg: #fbe7e7;
+  --nao-ink: #8c2626;
+  --erro-bg: #fdf0d7;
+  --erro-ink: #7a5a12;
+  --radius: 10px;
+  --mono: "SFMono-Regular", ui-monospace, "Cascadia Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+.health-chips {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+}
+
+.health-chips div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.health-chips dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.health-chips dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.chip-ok {
+  color: var(--sim-ink);
+}
+
+.chip-bad {
+  color: var(--nao-ink);
+}
+
+/* ---- barra do filtro IA ---- */
+
+.filter-bar {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.filter-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.filter-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.06s ease, background-color 0.15s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0a6558;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border-color: var(--line);
+  padding: 6px 12px;
+  font-weight: 500;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.progress {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.stats-line {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.error-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--nao-bg);
+  color: var(--nao-ink);
+  font-size: 13px;
+}
+
+/* ---- planilha ---- */
+
+.grid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grid-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.verdict-counts {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.grid-toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.grid-shell {
+  height: 620px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* vereditos na coluna temporária */
+.ai-verdict {
+  font-family: var(--mono);
+  font-weight: 700;
+  text-align: center;
+}
+
+.ai-sim {
+  background: var(--sim-bg);
+  color: var(--sim-ink);
+}
+
+.ai-nao {
+  background: var(--nao-bg);
+  color: var(--nao-ink);
+}
+
+.ai-erro {
+  background: var(--erro-bg);
+  color: var(--erro-ink);
+}
+
+.ai-source-cache {
+  opacity: 0.92;
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 18px 12px 32px;
+  }
+
+  .grid-shell {
+    height: 480px;
+  }
+
+  .health-chips {
+    flex-wrap: wrap;
+  }
+}

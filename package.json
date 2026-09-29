@@ -1,0 +1,44 @@
+{
+  "name": "jev-sheets",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Planilha completa (AG Grid) com filtro de IA: cada linha é avaliada pelo modelo Jev (System One, via OpenRouter) contra uma afirmação/pergunta, marcada SIM/NÃO em coluna temporária, com cache incremental e concorrência máxima.",
+  "scripts": {
+    "dev": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run tests/unit tests/ui",
+    "test:unit": "vitest run tests/unit",
+    "test:ui": "vitest run tests/ui",
+    "test:live": "vitest run tests/integration",
+    "test:all": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "ag-grid-community": "^36.2.0",
+    "ag-grid-react": "^36.2.0",
+    "express": "^5.2.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
