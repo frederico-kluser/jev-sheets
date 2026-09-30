@@ -44,7 +44,9 @@ export function SheetGrid({ columns, rows, results, onCellEdit }: SheetGridProps
       sortable: true,
       filter: true,
       resizable: true,
-      minWidth: 190,
+      // Largura mínima para as DUAS colunas do chip (veredito | detalhe)
+      // caberem sem truncar "p 0.060 · auto · cache" (~184 px + padding).
+      minWidth: 222,
       // Fixada à direita: os vereditos ficam sempre visíveis durante o scroll.
       pinned: "right",
       cellRenderer: VerdictCell,

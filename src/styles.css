@@ -310,11 +310,14 @@ body {
   text-align: center;
 }
 
+/* Chip em DUAS COLUNAS (veredito | detalhe) numa só linha: nada de texto
+   partido ou de segunda linha cortada na altura da linha da grid. */
 .ai-verdict-chip {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, max-content);
   align-items: center;
   justify-content: center;
+  column-gap: 10px;
   width: 100%;
   height: 100%;
   font-family: var(--mono);
@@ -323,12 +326,18 @@ body {
 .ai-verdict-chip strong {
   font-size: 13px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .ai-detail {
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, currentColor 28%, transparent);
   font-size: 10.5px;
-  opacity: 0.8;
+  opacity: 0.85;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* banda hitl (decisão incerta do Jev): contorno tracejado, nunca igual a "auto" */
