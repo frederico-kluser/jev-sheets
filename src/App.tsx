@@ -84,7 +84,11 @@ export default function App() {
     setStats(null);
     setUndoSnapshot(null);
     setResults(new Map());
-    setRows(initialRows());
+    // Limpa SÓ a coluna temporária. `initialRows()` aqui devolvia a grade aos
+    // dados de exemplo a cada envio: a edição sumia da tela, mas a API recebia
+    // a linha editada (via rowsRef) — o veredito novo aparecia ao lado do
+    // texto VELHO.
+    setRows((prev) => prev.map((r) => ({ ...r, [TEMP_COLUMN_ID]: "", __ai_meta: undefined })));
     const controller = new AbortController();
     abortRef.current = controller;
     try {

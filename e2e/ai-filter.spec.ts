@@ -74,4 +74,12 @@ test("editar uma célula limpa o resultado daquela linha", async ({ page }) => {
   await expect
     .poll(() => page.locator(".ag-cell.ai-sim, .ag-cell.ai-nao").count(), { timeout: 10_000 })
     .toBe(before - 1);
+
+  // Reenviar analisa SÓ a linha editada — e a edição continua na grade (antes,
+  // o envio devolvia a grade aos dados de exemplo e o texto editado sumia).
+  await page.getByRole("button", { name: "Enviar análise" }).click();
+  await expect(page.getByText("1 analisadas", { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText("17 da cache", { exact: true })).toBeVisible();
+  await expect(page.getByText("Cliente cancelou o plano")).toBeVisible();
+  await expect(page.getByText("Padaria Aurora")).toHaveCount(0);
 });
